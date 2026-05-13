@@ -1,0 +1,15 @@
+[project]
+name = "luminawork"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.136.1",
+    "langchain-ollama>=1.1.0",
+    "langchain-openai>=1.2.1",
+    "langgraph>=1.2.0",
+    "pandas>=3.0.3",
+    "pillow>=12.2.0",
+    "python-multipart>=0.0.28",
+    "uvicorn>=0.46.0",
+]
