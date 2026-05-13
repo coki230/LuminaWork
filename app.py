@@ -9,6 +9,7 @@ from agent_logic import app_agent
 from typing import List
 import uuid
 import shutil
+import re
 
 app = FastAPI()
 
@@ -64,10 +65,18 @@ async def process_request(
         # 假设 Agent 已经通过工具生成了文件，并返回了消息
         ai_response = final_state["messages"][-1].content
 
+        download_url = None
+        # 匹配路径如 temp_files/filename.pdf
+        match = re.search(r'temp_files/(\S+\.pdf)', ai_response)
+        if match:
+            file_name = match.group(1)
+            download_url = f"/download/{file_name}"
+
         return {
             "status": "success",
             "message": ai_response,
-            "job_id": job_id
+            "job_id": job_id,
+            "download_url": download_url
         }
 
     except Exception as e:

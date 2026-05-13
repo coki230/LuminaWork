@@ -13,9 +13,11 @@ from PIL import Image
 def convert_images_to_pdf(image_paths: List[str], output_filename: str):
     """当用户想要将多张图片、照片合并或转换为一个 PDF 文件时调用此工具。"""
     images = [Image.open(path).convert("RGB") for path in image_paths]
+    if not output_filename.endswith('.pdf'):
+        output_filename += '.pdf'
     output_path = f"temp_files/{output_filename}.pdf"
     images[0].save(output_path, save_all=True, append_images=images[1:])
-    return f"成功生成 PDF: {output_path}"
+    return f"成功生成 PDF，文件路径为: {output_path}"
 
 @tool
 def modify_excel_data(file_path: str, operation_desc: str):
