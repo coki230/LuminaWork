@@ -1,12 +1,14 @@
 from typing import Annotated, TypedDict, List
 
 from langchain_ollama import ChatOllama
-from langchain_openai import ChatOpenAI
+from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_core.tools import tool
 from langgraph.prebuilt import ToolNode
 from langgraph.graph import StateGraph, END
 import os
 from PIL import Image
+import pandas as pd
+
 
 # 1. 定义工具 (Tools)
 @tool
@@ -22,8 +24,8 @@ def convert_images_to_pdf(image_paths: List[str], output_filename: str):
 @tool
 def modify_excel_data(file_path: str, operation_desc: str):
     """当用户想要修改、统计或处理 Excel 表格数据时调用此工具。"""
-    # 这里可以接入更复杂的 pandas 逻辑
-    return f"已根据指令 '{operation_desc}' 处理 Excel: {file_path}"
+    output, output_path = handle_excel_with_agent(file_path, operation_desc)
+    return f"已根据指令 '{operation_desc}' 处理 Excel: {file_path}, 结果为：{output}, 新文件地址为：{output_path}"
 
 tools = [convert_images_to_pdf, modify_excel_data]
 tool_node = ToolNode(tools)
@@ -39,6 +41,63 @@ model = ChatOllama(
     temperature=0,
     # format="json" # 有些模型需要强制 JSON 格式，但在 bind_tools 下通常不需要
 ).bind_tools(tools)
+
+def handle_excel_with_agent(file_path: str, user_query: str):
+    # 1. 加载数据
+    df = None
+    output_path = f"temp_files/processed_{os.path.basename(file_path)}"
+    if not file_path.lower().endswith(('.xlsx', '.xls', '.csv')):
+        return '输入文件格式有问题', output_path
+
+    if file_path.lower().endswith(('.xlsx', '.xls')):
+        df = pd.read_excel(file_path)
+    elif file_path.lower().endswith('.csv'):
+        df = pd.read_csv(file_path)
+
+    prefix = """
+    你是一个资深 A 股量化数据分析师。
+    注意：
+    1. **必须原位修改**：所有的筛选或处理操作，必须赋值回变量 `df`。例如：`df = df[df['low'] > 6.6]`。
+    2. 你可以直接使用 pd.to_numeric 等函数，因为 pandas 已预先导入
+    """
+
+    # 3. 创建 Pandas Agent
+    # allow_dangerous_code=True 是必须的，因为 Agent 需要运行生成的 Python 代码
+    agent = create_pandas_dataframe_agent(
+        model,
+        df,
+        prefix=prefix,  # 注入专业指令
+        verbose=True,
+        allow_dangerous_code=True,
+        agent_type="tool-calling",
+        include_df_in_prompt=True,  # 让 AI 明确看到列名，减少尝试
+        max_iterations=9,
+        max_execution_time=30   # 强制单次任务最长 30 秒
+    )
+
+    # 4. 执行并获取结果
+    # 它会自动理解“合计”、“加100”、“最大值”等语义
+    response = agent.invoke(user_query)
+    print("response:", response)
+
+    # 从 Agent 的 tool 状态中提取修改后的 df
+    # 实际上，create_pandas_dataframe_agent 的内部 tools[0] 就是那个 python_repl
+    # 我们可以通过以下方式获取它执行后的 locals 变量表
+    for tool_item in agent.tools:
+        if hasattr(tool_item, "globals") and "df" in tool_item.globals:
+            df = tool_item.globals["df"]
+        elif hasattr(tool_item, "locals") and "df" in tool_item.locals:
+            df = tool_item.locals["df"]
+
+    # 5. 保存结果（如果是修改操作）
+    # 注意：Agent 默认在内存中操作 df，我们需要保存
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext == '.csv':
+        df.to_csv(file_path, index=False, encoding='utf-8-sig')
+    else:
+        df.to_excel(file_path, index=False)
+
+    return response["output"], output_path
 
 # 3. 定义逻辑流
 def router(state: AgentState):

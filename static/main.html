@@ -86,13 +86,28 @@
         };
 
         // 辅助函数：添加聊天气泡
-        function addBubble(text, isAi = false) {
+        function addBubble(text, isAi = false, downloadUrl = null) {
             const div = document.createElement('div');
             div.className = isAi ? "bubble bubble-ai" : "bubble bubble-user";
-            div.innerText = text;
+
+            // 基础文字内容
+            let content = `<div>${text}</div>`;
+
+            // 如果有下载链接，直接在气泡里加一个按钮
+            if (isAi && downloadUrl) {
+                const time = new Date().toLocaleTimeString();
+                content += `
+                    <div class="mt-3 pt-2 border-t border-gray-200">
+                        <p class="text-xs text-gray-500 mb-2">生成时间：${time}</p>
+                        <a href="${downloadUrl}" target="_blank" class="inline-flex items-center px-3 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 transition">
+                            📥 点击下载此版本
+                        </a>
+                    </div>`;
+            }
+
+            div.innerHTML = content;
             chatContent.appendChild(div);
             chatContent.scrollTop = chatContent.scrollHeight;
-            return div;
         }
 
         // 辅助函数：显示/隐藏加载动画

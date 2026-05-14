@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import traceback
 
@@ -66,6 +67,7 @@ async def process_request(
         ai_response = final_state["messages"][-1].content
 
         download_url = None
+        file_name = ''
         # 匹配路径如 temp_files/filename.pdf
         match = re.search(r'temp_files/(\S+\.pdf)', ai_response)
         if match:
@@ -76,7 +78,9 @@ async def process_request(
             "status": "success",
             "message": ai_response,
             "job_id": job_id,
-            "download_url": download_url
+            "download_url": download_url,
+            "filename": file_name,
+            "timestamp": datetime.now().strftime("%H:%M:%S")
         }
 
     except Exception as e:
