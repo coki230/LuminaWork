@@ -1,5 +1,8 @@
+import json
+import re
 from typing import Annotated, TypedDict, List
 
+from langchain_core.messages import ToolMessage
 from langchain_ollama import ChatOllama
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_core.tools import tool
@@ -19,13 +22,19 @@ def convert_images_to_pdf(image_paths: List[str], output_filename: str):
         output_filename += '.pdf'
     output_path = f"temp_files/{output_filename}.pdf"
     images[0].save(output_path, save_all=True, append_images=images[1:])
-    return f"成功生成 PDF，文件路径为: {output_path}"
+    return {
+        "messages": [f"已成功生成 PDF：{output_path}"],
+        "latest_file": output_path
+    }
 
 @tool
 def modify_excel_data(file_path: str, operation_desc: str):
     """当用户想要修改、统计或处理 Excel 表格数据时调用此工具。"""
     output, output_path = handle_excel_with_agent(file_path, operation_desc)
-    return f"已根据指令 '{operation_desc}' 处理 Excel: {file_path}, 结果为：{output}, 新文件地址为：{output_path}"
+    return {
+        "messages": [f"已成功生成处理文件，结果为：{output}"],
+        "latest_file": output_path
+    }
 
 tools = [convert_images_to_pdf, modify_excel_data]
 tool_node = ToolNode(tools)
@@ -34,6 +43,7 @@ tool_node = ToolNode(tools)
 class AgentState(TypedDict):
     messages: Annotated[List, "messages"]
     file_list: List[str]  # 存储上传的文件路径
+    latest_file: str
 
 # model = ChatOpenAI(model="gpt-4-turbo").bind_tools(tools)
 model = ChatOllama(
@@ -110,7 +120,27 @@ def call_model(state: AgentState):
     # 将文件列表上下文注入到提示词中
     prompt = f"当前用户上传的文件有: {state['file_list']}。请根据用户要求调用工具。"
     response = model.invoke([{"role": "system", "content": prompt}] + state["messages"])
-    return {"messages": [response]}
+    latest_file = state.get("latest_file", "")
+    for msg in reversed(state["messages"]):
+        # 只要是工具消息，就尝试解析
+        if isinstance(msg, ToolMessage):
+            content = msg.content
+            try:
+                # 尝试解析 JSON 字符串
+                data = json.loads(content)
+                if isinstance(data, dict) and "latest_file" in data:
+                    latest_file = data["latest_file"]
+                    break
+            except (json.JSONDecodeError, TypeError):
+                # 如果不是 JSON 字符串（比如是纯文本回复），尝试正则兜底
+                match = re.search(r'temp_files/[\w\.-]+', str(content))
+                if match:
+                    latest_file = match.group(0)
+                    break
+    return {
+        "messages": [response],
+        "latest_file": latest_file
+    }
 
 # 4. 构建工作流图
 workflow = StateGraph(AgentState)

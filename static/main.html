@@ -3,64 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 文件助手</title>
+    <title>AI 文件助手 - 量化数据版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .chat-box { height: 500px; overflow-y: auto; scroll-behavior: smooth; }
-        /* 聊天气泡样式 */
-        .bubble { max-width: 80%; padding: 10px 15px; border-radius: 15px; font-size: 14px; line-height: 1.5; position: relative; }
-        .bubble-user { background-color: #4f46e5; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
-        .bubble-ai { background-color: #f3f4f6; color: #1f2937; align-self: flex-start; border-bottom-left-radius: 2px; }
-        /* 打字动画 */
-        .typing { display: flex; gap: 4px; padding: 10px; }
+        .chat-box { height: calc(100vh - 250px); overflow-y: auto; scroll-behavior: smooth; }
+        .bubble { max-width: 85%; padding: 12px 16px; border-radius: 18px; font-size: 14px; line-height: 1.6; }
+        .bubble-user { background-color: #4f46e5; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .bubble-ai { background-color: #f3f4f6; color: #1f2937; align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid #e5e7eb; }
+        .typing { display: flex; gap: 4px; padding: 12px; width: fit-content; }
         .dot { width: 6px; height: 6px; background: #9ca3af; border-radius: 50%; animation: blink 1.4s infinite both; }
         .dot:nth-child(2) { animation-delay: 0.2s; }
         .dot:nth-child(3) { animation-delay: 0.4s; }
         @keyframes blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+<body class="bg-slate-50 min-h-screen">
 
-    <div class="max-w-5xl mx-auto space-y-6">
-        <header class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-800">AI 文件处理中心</h1>
-            <p class="text-gray-600">合并图片为PDF，或通过对话修改 Excel</p>
+    <div class="max-w-6xl mx-auto p-4 md:p-6">
+        <header class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">AI 文件处理中心</h1>
+                <p class="text-sm text-slate-500">支持 A 股行情数据筛选与 PDF 转换</p>
+            </div>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div class="md:col-span-1 space-y-4">
-                <div class="bg-white p-6 rounded-xl shadow-md">
-                    <h2 class="font-bold mb-4 text-indigo-600">1. 上传附件</h2>
-                    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-indigo-500 transition">
-                        <p class="text-xs text-gray-500">点击或拖拽文件</p>
+            <div class="md:col-span-1">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 sticky top-6">
+                    <h2 class="font-semibold mb-4 text-slate-700 flex items-center gap-2">
+                        <span class="w-2 h-5 bg-indigo-500 rounded-full"></span>
+                        1. 准备数据
+                    </h2>
+                    <div id="drop-zone" class="group border-2 border-dashed border-slate-200 rounded-xl p-6 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-all">
+                        <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">📂</div>
+                        <p class="text-xs text-slate-400">点击或拖拽 A 股数据文件</p>
                         <input type="file" id="file-input" class="hidden" multiple>
                     </div>
-                    <ul id="file-list" class="mt-4 text-xs text-gray-600 space-y-2"></ul>
-                </div>
-
-                <div id="result-area" class="hidden bg-white p-6 rounded-xl shadow-md border-t-4 border-green-500">
-                    <h2 class="font-bold mb-2 text-gray-800 text-sm">处理完成</h2>
-                    <p id="result-filename" class="text-xs text-gray-500 mb-4 break-all"></p>
-                    <div class="flex flex-col gap-2">
-                        <button onclick="previewFile()" class="w-full py-2 bg-indigo-50 text-indigo-600 rounded text-sm font-medium hover:bg-indigo-100">👁️ 在线预览</button>
-                        <a id="download-btn" href="#" download class="w-full py-2 bg-indigo-600 text-white rounded text-sm font-medium text-center hover:bg-indigo-700">📥 立即下载</a>
+                    <div id="file-status" class="mt-4 hidden">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">已加载文件</p>
+                        <ul id="file-list" class="space-y-2"></ul>
                     </div>
                 </div>
             </div>
 
-            <div class="md:col-span-3 bg-white rounded-xl shadow-md flex flex-col overflow-hidden">
-                <div id="chat-content" class="chat-box p-4 flex flex-col space-y-4">
+            <div class="md:col-span-3 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div id="chat-content" class="chat-box p-6 flex flex-col space-y-6">
                     <div class="bubble bubble-ai">
-                        您好！请上传文件并在下方告诉我您的需求（如“合并图片”）。
+                        您好！作为您的量化分析助手，您可以上传 A 股历史行情文件（CSV/Excel），我会帮您进行复杂的筛选和处理。
                     </div>
                 </div>
 
-                <div class="p-4 bg-gray-50 border-t flex gap-2">
-                    <input type="text" id="user-input"
-                           onkeypress="if(event.keyCode==13) handleSend()"
-                           class="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                           placeholder="描述您的需求...">
-                    <button onclick="handleSend()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">发送</button>
+                <div class="p-4 bg-white border-t border-slate-100">
+                    <div class="relative flex items-center">
+                        <input type="text" id="user-input"
+                               onkeypress="if(event.keyCode==13) handleSend()"
+                               class="w-full bg-slate-50 border-none rounded-xl pl-4 pr-24 py-3 focus:ring-2 focus:ring-indigo-500 text-sm"
+                               placeholder="例如：筛选 low 字段大于 6.6 的数据行">
+                        <button onclick="handleSend()" class="absolute right-2 bg-indigo-600 text-white px-5 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-700 transition shadow-sm">
+                            发送
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -71,37 +73,44 @@
         const dropZone = document.getElementById('drop-zone');
         const fileList = document.getElementById('file-list');
         const chatContent = document.getElementById('chat-content');
-        let currentDownloadUrl = "";
 
-        // 文件选择交互
         dropZone.onclick = () => fileInput.click();
         fileInput.onchange = (e) => {
+            if(e.target.files.length > 0) document.getElementById('file-status').classList.remove('hidden');
             fileList.innerHTML = '';
             Array.from(e.target.files).forEach(f => {
                 const li = document.createElement('li');
-                li.className = "bg-gray-50 p-2 rounded border flex items-center gap-2";
-                li.innerHTML = `<span class="truncate text-gray-700">📄 ${f.name}</span>`;
+                li.className = "flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100 text-xs text-slate-600";
+                li.innerHTML = `<span class="opacity-50 text-sm">📄</span> <span class="truncate font-medium">${f.name}</span>`;
                 fileList.appendChild(li);
             });
         };
 
-        // 辅助函数：添加聊天气泡
+        /**
+         * 核心改进：在气泡中集成下载 UI
+         */
         function addBubble(text, isAi = false, downloadUrl = null) {
             const div = document.createElement('div');
-            div.className = isAi ? "bubble bubble-ai" : "bubble bubble-user";
+            div.className = isAi ? "bubble bubble-ai shadow-sm" : "bubble bubble-user shadow-md";
 
-            // 基础文字内容
-            let content = `<div>${text}</div>`;
+            let content = `<div class="whitespace-pre-wrap">${text}</div>`;
 
-            // 如果有下载链接，直接在气泡里加一个按钮
+            // 如果 AI 成功返回了下载路径，则渲染下载卡片
             if (isAi && downloadUrl) {
-                const time = new Date().toLocaleTimeString();
+                const fileName = downloadUrl.split('/').pop();
                 content += `
-                    <div class="mt-3 pt-2 border-t border-gray-200">
-                        <p class="text-xs text-gray-500 mb-2">生成时间：${time}</p>
-                        <a href="${downloadUrl}" target="_blank" class="inline-flex items-center px-3 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 transition">
-                            📥 点击下载此版本
-                        </a>
+                    <div class="mt-4 p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between shadow-inner">
+                        <div class="flex items-center gap-3 overflow-hidden">
+                            <div class="bg-emerald-100 text-emerald-600 w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0">📊</div>
+                            <div class="overflow-hidden">
+                                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">处理完成版本</p>
+                                <p class="text-xs font-semibold text-slate-700 truncate w-32 md:w-48">${fileName}</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                             <button onclick="window.open('${downloadUrl}', '_blank')" class="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs rounded-md hover:bg-slate-200 transition">预览</button>
+                             <a href="${downloadUrl}" download class="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 transition">下载</a>
+                        </div>
                     </div>`;
             }
 
@@ -110,11 +119,10 @@
             chatContent.scrollTop = chatContent.scrollHeight;
         }
 
-        // 辅助函数：显示/隐藏加载动画
         function showTyping() {
             const div = document.createElement('div');
             div.id = "typing-indicator";
-            div.className = "bubble bubble-ai typing";
+            div.className = "bubble bubble-ai typing shadow-sm";
             div.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
             chatContent.appendChild(div);
             chatContent.scrollTop = chatContent.scrollHeight;
@@ -125,68 +133,38 @@
             if (el) el.remove();
         }
 
-        // 预览功能
-        function previewFile() {
-            if (currentDownloadUrl) {
-                window.open(currentDownloadUrl, '_blank');
-            }
-        }
-
         async function handleSend() {
             const userInput = document.getElementById('user-input');
             const prompt = userInput.value.trim();
             if (!prompt) return;
 
-            // 1. 用户气泡展示
             addBubble(prompt, false);
             userInput.value = '';
 
-            // 2. 检查文件并准备数据
             const formData = new FormData();
             if (fileInput.files.length === 0) {
-                addBubble("请先上传文件再发送指令。", true);
+                addBubble("请先上传文件（如 sh.600000.csv）再发送指令。", true);
                 return;
             }
-            for (let file of fileInput.files) {
-                formData.append("files", file);
-            }
+            for (let file of fileInput.files) formData.append("files", file);
             formData.append("prompt", prompt);
 
-            // 3. 显示正在处理动画
             showTyping();
 
             try {
-                const response = await fetch('/process', {
-                    method: 'POST',
-                    body: formData
-                });
-
+                const response = await fetch('/process', { method: 'POST', body: formData });
                 const result = await response.json();
                 removeTyping();
 
                 if (result.status === "success") {
-                    // 4. AI 气泡返回
-                    addBubble(result.message, true);
-
-                    // 5. 处理结果与下载
-                    // 注意：后端返回的消息通常包含生成的文件路径信息，
-                    // 假设后端在结果中返回了 download_url
-                    if (result.download_url || result.job_id) {
-                        // 构造下载地址：优先使用返回的 url，否则拼接 job_id
-                        const url = result.download_url || `/download/result_${result.job_id}.pdf`;
-                        currentDownloadUrl = url;
-
-                        document.getElementById('result-area').classList.remove('hidden');
-                        document.getElementById('result-filename').innerText = "生成文件已就绪";
-                        document.getElementById('download-btn').href = url;
-                    }
+                    // 传入返回的下载 URL 到气泡中
+                    addBubble(result.message, true, result.download_url);
                 } else {
-                    addBubble("抱歉，处理失败：" + result.message, true);
+                    addBubble("处理出错：" + result.message, true);
                 }
             } catch (error) {
                 removeTyping();
-                addBubble("网络错误，请稍后再试。", true);
-                console.error("提交失败:", error);
+                addBubble("连接后端失败，请确保本地 Ollama 正在运行。", true);
             }
         }
     </script>

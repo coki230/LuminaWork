@@ -56,7 +56,8 @@ async def process_request(
         # 输入状态包含：消息列表 和 上传的文件路径列表
         inputs = {
             "messages": [("user", prompt)],
-            "file_list": saved_paths
+            "file_list": saved_paths,
+            "latest_file": ""
         }
 
         # 运行 Agent
@@ -66,20 +67,13 @@ async def process_request(
         # 假设 Agent 已经通过工具生成了文件，并返回了消息
         ai_response = final_state["messages"][-1].content
 
-        download_url = None
-        file_name = ''
-        # 匹配路径如 temp_files/filename.pdf
-        match = re.search(r'temp_files/(\S+\.pdf)', ai_response)
-        if match:
-            file_name = match.group(1)
-            download_url = f"/download/{file_name}"
+        download_url = final_state.get("latest_file", "")
 
         return {
             "status": "success",
             "message": ai_response,
             "job_id": job_id,
             "download_url": download_url,
-            "filename": file_name,
             "timestamp": datetime.now().strftime("%H:%M:%S")
         }
 
